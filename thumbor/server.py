@@ -135,7 +135,8 @@ def main(arguments=None):
         arguments = sys.argv[1:]
 
     server_parameters = get_server_parameters(arguments)
-    config = get_config(server_parameters.config_path, server_parameters.use_environment)
+    config = get_config(server_parameters.config_path,
+                        server_parameters.use_environment)
     configure_log(config, server_parameters.log_level.upper())
 
     validate_config(config, server_parameters)
@@ -146,7 +147,8 @@ def main(arguments=None):
         application = get_application(context)
         server = run_server(application, context)
         setup_signal_handler(server, config)
-        logging.debug('thumbor running at %s:%d' % (context.server.ip, context.server.port))
+        logging.debug('thumbor running at %s:%d' %
+                      (context.server.ip, context.server.port))
         tornado.ioloop.IOLoop.instance().start()
 
 

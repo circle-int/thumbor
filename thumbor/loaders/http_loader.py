@@ -11,6 +11,10 @@
 import datetime
 import re
 from functools import partial
+from os.path import join, exists, abspath
+from os import fstat
+
+import cv2
 
 import tornado.httpclient
 from six.moves.urllib.parse import quote, unquote, urlparse
@@ -18,6 +22,57 @@ from six.moves.urllib.parse import quote, unquote, urlparse
 from thumbor.loaders import LoaderResult
 from thumbor.utils import logger
 from tornado.concurrent import return_future
+
+
+def frame_capture(context, url):
+    filename = url.split('/')[-1].split('.')[0] + '.jpg'
+    filepath = join(context.config.FILE_STORAGE_ROOT_PATH.rstrip(
+        '/'), filename)
+    filpath = abspath(filepath)
+
+    vidcap = cv2.VideoCapture(url)
+    success, image = vidcap.read()
+    count = 0
+    while (count < 10):
+        success, image = vidcap.read()
+        count += 1
+    cv2.imwrite(filpath, image)  # save frame as JPEG file
+    print('Reading frame', success, url)
+    return filepath
+
+
+def load_file(context, file_path, callback):
+    inside_root_path = file_path.startswith(
+        abspath(context.config.FILE_LOADER_ROOT_PATH))
+
+    result = LoaderResult()
+
+    if not inside_root_path:
+        result.error = LoaderResult.ERROR_NOT_FOUND
+        result.successful = False
+        callback(result)
+        return
+
+    # keep backwards compatibility, try the actual path first
+    # if not found, unquote it and try again
+    if not exists(file_path):
+        file_path = unquote(file_path)
+
+    if exists(file_path):
+        with open(file_path, 'r') as f:
+            stats = fstat(f.fileno())
+
+            result.successful = True
+            result.buffer = f.read()
+
+            result.metadata.update(
+                size=stats.st_size,
+                updated_at=datetime.datetime.utcfromtimestamp(stats.st_mtime))
+    else:
+        result.error = LoaderResult.ERROR_NOT_FOUND
+        result.successful = False
+
+    callback(result)
 
 
 def encode_url(url):
@@ -104,7 +159,12 @@ def return_contents(response, url, callback, context, req_start=None):
 
 @return_future
 def load(context, url, callback, normalize_url_func=_normalize_url):
-    load_sync(context, url, callback, normalize_url_func)
+    url = normalize_url_func(url)
+    if (url.find('.mp4') == -1 and url.find('.3gp') == -1):
+        load_sync(context, url, callback, normalize_url_func)
+    else:
+        filepath = frame_capture(context, url)
+        load_file(context, filepath, callback)
 
 
 def load_sync(context, url, callback, normalize_url_func):
