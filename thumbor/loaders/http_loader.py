@@ -160,11 +160,18 @@ def return_contents(response, url, callback, context, req_start=None):
 @return_future
 def load(context, url, callback, normalize_url_func=_normalize_url):
     url = normalize_url_func(url)
-    if (url.find('.mp4') == -1 and url.find('.3gp') == -1):
-        load_sync(context, url, callback, normalize_url_func)
-    else:
+    is_video = (url.find('unsafe') == -1 or url.find('filters') == -1) and url.find('.mp4') != -1 or \
+        url.find('.3gp') != -1 or \
+        url.find('.mpg') != -1 or \
+        url.find('.MP4') != -1 or \
+        url.find('.3GP') != -1 or \
+        url.find('.MPG') != -1
+
+    if (is_video):
         filepath = frame_capture(context, url)
         load_file(context, filepath, callback)
+    else:
+        load_sync(context, url, callback, normalize_url_func)
 
 
 def load_sync(context, url, callback, normalize_url_func):
