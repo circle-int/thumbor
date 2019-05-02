@@ -49,7 +49,7 @@ def get_server_parameters(arguments=None):
     )
 
     parser.add_argument(
-        "-l", "--log-level", default="debug",
+        "-l", "--log-level", default="warning",
         help="The log level to be used. Possible values are: debug, info, warning, error, critical or notset. "
         "[default: %(default)s]."
     )
